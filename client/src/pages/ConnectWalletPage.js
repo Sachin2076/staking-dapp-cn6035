@@ -7,9 +7,10 @@
 
 import React, { useState } from "react";
 
-export default function ConnectWalletPage({ onConnect, username }) {
+export default function ConnectWalletPage({ onConnect, onGuest, username }) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const [hoveredGuest, setHoveredGuest] = useState(false);
 
   return (
     <div
@@ -75,10 +76,32 @@ export default function ConnectWalletPage({ onConnect, username }) {
           Connect MetaMask
         </button>
 
-        <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e2e8f0" }}>
+        {/* Guest Mode */}
+        <button
+          onClick={onGuest}
+          onMouseEnter={() => setHoveredGuest(true)}
+          onMouseLeave={() => setHoveredGuest(false)}
+          style={{
+            width: "100%",
+            marginTop: 16,
+            padding: "14px 32px",
+            fontSize: 15,
+            fontWeight: 600,
+            color: hoveredGuest ? "#667eea" : "#718096",
+            background: "transparent",
+            border: `2px solid ${hoveredGuest ? "#667eea" : "#e2e8f0"}`,
+            borderRadius: 12,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            transition: "all 0.2s ease",
+          }}
+        >
+          👀 Browse Without Wallet
+        </button>
+
+        <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid #e2e8f0" }}>
           <p style={{ fontSize: 13, color: "#a0aec0", lineHeight: 1.6 }}>
-            Make sure MetaMask is installed and connected
-            to the Hardhat local network or Sepolia testnet.
+            Browse mode lets you explore the platform. Connect MetaMask to stake ETH and earn rewards.
           </p>
         </div>
       </div>
