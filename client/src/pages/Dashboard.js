@@ -103,34 +103,53 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
         onLearnMore={() => setPage("learn")}
       />
 
-      {/* Animations */}
+      {/* Animations + Mobile Styles */}
       <style>{`
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(30px); }
-          to   { opacity: 1; transform: translateY(0);    }
+          to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes fadeSlideLeft {
           from { opacity: 0; transform: translateX(-30px); }
-          to   { opacity: 1; transform: translateX(0);     }
+          to   { opacity: 1; transform: translateX(0); }
         }
         @keyframes cardPop {
           from { opacity: 0; transform: translateY(20px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0)    scale(1);    }
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50%       { transform: scale(1.04); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         .stake-btn-hero:hover {
           transform: scale(1.05) !important;
           box-shadow: 0 10px 32px rgba(255,255,255,0.3) !important;
         }
-        .stake-btn-hero:active {
-          transform: scale(0.97) !important;
-        }
         .why-card:hover {
-          transform: translateY(-10px) !important;
+          transform: translateY(-8px) !important;
           box-shadow: 0 16px 40px rgba(102,126,234,0.18) !important;
+        }
+        .main-grid {
+          display: grid;
+          grid-template-columns: 1fr 350px;
+          gap: 32px;
+        }
+        @media (max-width: 1024px) {
+          .main-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .sidebar-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+          }
+        }
+        @media (max-width: 640px) {
+          .sidebar-section {
+            grid-template-columns: 1fr !important;
+          }
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .why-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
 
@@ -138,9 +157,9 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
       <section
         style={{
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          padding: "clamp(40px, 6vw, 80px) 24px",
+          padding: "clamp(32px, 6vw, 80px) clamp(16px, 4vw, 40px)",
           borderBottom: "4px solid #5a67d8",
-          marginTop: notification ? 60 : 0,
+          marginTop: notification ? 58 : 0,
         }}
       >
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -188,7 +207,7 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
 
 
           {/* Stats Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
             {[
               { label: "Your Total Staked", value: toEth4(totalStaked) + " ETH", color: "#fff" },
               { label: "Rewards Earned",    value: toEth(totalRewards) + " ETH",  color: "#48bb78" },
@@ -219,14 +238,14 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
 
       {/* Why Stake Section */}
       <section style={{ background: "#fff", borderBottom: "1px solid #e2e8f0" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(40px, 6vw, 80px) 24px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "clamp(32px, 6vw, 80px) clamp(16px, 4vw, 24px)" }}>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 36px)", fontWeight: 700, color: "#1a202c", marginBottom: 12 }}>
             Why stake on our platform?
           </h2>
           <p style={{ fontSize: 16, color: "#718096", marginBottom: 48 }}>
             Decentralized, transparent, and secure staking — no intermediaries.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 32 }}>
+          <div className="why-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
             {[
               { icon: "⚡", title: "Fast. Easy. No minimums",       desc: "Stake any amount of ETH (min 0.001 ETH) with a few clicks. Rewards start immediately." },
               { icon: "🔗", title: "Smart Contract Integration",    desc: "Direct on-chain interaction. Transparent, immutable, and fully decentralized." },
@@ -256,14 +275,8 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
       </section>
 
       {/* Main Content */}
-      <section id="stake-form-section" style={{ maxWidth: 1400, margin: "0 auto", padding: "60px 24px" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: window.innerWidth > 1024 ? "1fr 350px" : "1fr",
-            gap: 32,
-          }}
-        >
+      <section id="stake-form-section" style={{ maxWidth: 1400, margin: "0 auto", padding: "clamp(24px, 4vw, 60px) clamp(16px, 3vw, 24px)" }}>
+        <div className="main-grid">
           {/* Left: Stake + Table */}
           <div>
             <StakeForm account={account} onStake={handleStake} status={status} />
@@ -275,12 +288,14 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
           </div>
 
           {/* Right: Sidebar */}
-          <Sidebar
-            ethPrice={ethPrice}
-            priceHistory={priceHistory}
-            contractBalance={contractBalance}
-            notificationVisible={!!notification}
-          />
+          <div className="sidebar-section">
+            <Sidebar
+              ethPrice={ethPrice}
+              priceHistory={priceHistory}
+              contractBalance={contractBalance}
+              notificationVisible={!!notification}
+            />
+          </div>
         </div>
       </section>
 

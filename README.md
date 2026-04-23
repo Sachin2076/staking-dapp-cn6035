@@ -6,7 +6,7 @@ Verify on Etherscan:https://sepolia.etherscan.io/address/0x341314fd5bcA243edC9d8
 A Full-Stack DApp allowing users to stake ETH, earn time-based rewards, and withdraw with lockup periods, built with Hardhat and React.
 
 ## ✨ Features
-
+code scripts/deploy.js
 - **Login Page**: Secure MetaMask connection with animated button feedback
 - **Responsive Design**: Works perfectly on all devices (mobile, tablet, desktop)
 - **Live ETH Price Chart**: Real-time Ethereum price with 7-day history visualization
