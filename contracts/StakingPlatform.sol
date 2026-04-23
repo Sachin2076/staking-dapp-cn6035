@@ -98,10 +98,7 @@ contract StakingPlatform {
             msg.value >= MIN_STAKE,
             "StakingPlatform: must send ETH to stake"
         );
-        require(
-            msg.sender != address(0),
-            "StakingPlatform: invalid sender address"
-        );
+        
 
         Stake memory newStake = Stake({
             amount:       msg.value,
