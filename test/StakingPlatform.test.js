@@ -8,7 +8,7 @@
 const { expect }        = require("chai");
 const { ethers }        = require("hardhat");
 const { time }          = require("@nomicfoundation/hardhat-network-helpers");
-
+const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 describe("StakingPlatform", function () {
   let contract;
   let owner;
@@ -132,7 +132,35 @@ describe("StakingPlatform", function () {
       ).to.be.revertedWith("StakingPlatform: already withdrawn");
     });
   });
+  // ── Platform Stats ────────────────────────────────────────────────────────
+
+  describe("getPlatformStats()", function () {
+    it("should track total staked and stakes created correctly", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      await contract.connect(user2).stake({ value: ethers.parseEther("2") });
+
+      const stats = await contract.getPlatformStats();
+      expect(stats._totalStaked).to.equal(ethers.parseEther("3"));
+      expect(stats._totalStakesCreated).to.equal(2n);
+    });
+  });
+
+  // ── Multi-user isolation ──────────────────────────────────────────────────
+
+  describe("Multi-user", function () {
+    it("should isolate stakes between different users", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      await contract.connect(user2).stake({ value: ethers.parseEther("2") });
+
+      const user1Stakes = await contract.getUserStakes(user1.address);
+      const user2Stakes = await contract.getUserStakes(user2.address);
+
+      expect(user1Stakes.length).to.equal(1);
+      expect(user2Stakes.length).to.equal(1);
+      expect(user1Stakes[0].amount).to.equal(ethers.parseEther("1"));
+      expect(user2Stakes[0].amount).to.equal(ethers.parseEther("2"));
+    });
+  });
 });
 
 // Helper matcher for any value (used in event args)
-const anyValue = require("@nomicfoundation/hardhat-chai-matchers/withArgs").anyValue;
