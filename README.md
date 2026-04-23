@@ -1,4 +1,8 @@
 # Decentralized Staking Platform for Token Rewards
+## Sepolia Deployment
+Contract Address: 0x393D4033Fa4e69d633270b8219660ADcE6Ed80Eb
+Network: Ethereum Sepolia Testnet
+Verify on Etherscan: https://sepolia.etherscan.io/address/0x393D4033Fa4e69d633270b8219660ADcE6Ed80Eb
 
 A Full-Stack DApp allowing users to stake ETH, earn time-based rewards, and withdraw with lockup periods, built with Hardhat and React.
 
