@@ -43,7 +43,7 @@ async function main() {
     value: ethers.parseEther("0.01"),
   });
   await fundTx.wait();
-  console.log(`Reward pool funded   : 0.1 ETH`);
+  console.log(`Reward pool funded   : 0.01 ETH`);
 
   // ── 3. Write contractConfig.js for the React frontend ────────────────────
   const artifactPath = path.join(
