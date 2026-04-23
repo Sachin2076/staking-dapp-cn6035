@@ -17,7 +17,7 @@ import { fetchChainData, stakeETH, withdrawStake } from "../services/blockchain"
 import { fetchETHPrice, fetchPriceHistory }        from "../services/api";
 import { calcReward, toEth, toEth4, ANNUAL_RATE }  from "../utils/helpers";
 
-export default function Dashboard({ account, username, onLogout, setPage }) {
+export default function Dashboard({ account, username, onLogout, setPage, onConnectWallet }) {
   const [stakes,          setStakes]          = useState([]);
   const [contractBalance, setContractBalance] = useState(0n);
   const [status,          setStatus]          = useState("");
@@ -95,7 +95,7 @@ export default function Dashboard({ account, username, onLogout, setPage }) {
   return (
     <div style={{ background: "#f7f9fc", minHeight: "100vh" }}>
 
-      <Navbar setPage={setPage} username={username} onLogout={onLogout} />
+      <Navbar setPage={setPage} username={username} onLogout={onLogout} account={account} onConnectWallet={onConnectWallet} />
 
       <NotificationBanner
         message={notification}

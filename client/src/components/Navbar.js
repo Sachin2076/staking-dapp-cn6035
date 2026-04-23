@@ -7,7 +7,7 @@
 
 import React, { useState } from "react";
 
-export default function Navbar({ setPage, username, onLogout }) {
+export default function Navbar({ setPage, username, onLogout, account, onConnectWallet }) {
   const [hoveredBtn, setHoveredBtn] = useState(null);
 
   return (
@@ -84,6 +84,32 @@ export default function Navbar({ setPage, username, onLogout }) {
         <span style={{ fontSize: "clamp(12px, 1.5vw, 14px)", fontWeight: 600, color: "#2d3748" }}>
           {username}
         </span>
+
+        {/* Show Connect Wallet if guest */}
+        {!account && (
+          <button
+            onClick={onConnectWallet}
+            onMouseEnter={() => setHoveredBtn("connect")}
+            onMouseLeave={() => setHoveredBtn(null)}
+            style={{
+              padding: "8px 16px",
+              background: hoveredBtn === "connect"
+                ? "linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)"
+                : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: "clamp(11px, 1.5vw, 13px)",
+              fontWeight: 600,
+              transition: "all 0.2s",
+              fontFamily: "inherit",
+            }}
+          >
+            🦊 Connect Wallet
+          </button>
+        )}
+
         <button
           onClick={onLogout}
           onMouseEnter={() => setHoveredBtn("logout")}

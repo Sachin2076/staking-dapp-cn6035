@@ -51,6 +51,12 @@ export default function App() {
     }
   };
 
+  const handleGuest = () => {
+    setAccount(null);
+    setStage("app");
+    setPage("home");
+  };
+
   const handleLogout = () => {
     setAccount(null);
     setUsername("");
@@ -59,7 +65,7 @@ export default function App() {
   };
 
   if (stage === "auth")    return <AuthPage onLogin={handleLogin} />;
-  if (stage === "connect") return <ConnectWalletPage username={username} onConnect={handleConnect} />;
+  if (stage === "connect") return <ConnectWalletPage username={username} onConnect={handleConnect} onGuest={handleGuest} />;
   if (page === "learn")    return <LearnPage onBack={() => setPage("home")} />;
   if (page === "calc")     return <CalculatorPage onBack={() => setPage("home")} />;
 
@@ -69,6 +75,7 @@ export default function App() {
       username={username}
       onLogout={handleLogout}
       setPage={setPage}
+      onConnectWallet={handleConnect}
     />
   );
 }
