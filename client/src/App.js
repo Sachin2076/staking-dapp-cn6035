@@ -21,7 +21,7 @@ const toDate = (unix) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-const truncAddr = (a) => (a ? a.slice(0, 6) + "..." + a.slice(-4) : "—");
+
 
 const calcReward = (amountWei, startTime) => {
   const elapsed = BigInt(Math.floor(Date.now() / 1000)) - BigInt(startTime);
@@ -1981,8 +1981,8 @@ export default function App() {
       onLogout={() => {
         setAccount(null);
         setUsername("");
-        setStage("auth");
-      }}
-    />
-  );
+       setStage("auth");
+  }}
+  />
+);
 }
