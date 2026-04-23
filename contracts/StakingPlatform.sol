@@ -9,6 +9,12 @@ pragma solidity ^0.8.19;
  * Each user can hold multiple independent stakes.
  * Rewards accrue linearly: reward = amount * RATE * timeElapsed / (365 days * PRECISION)
  * A lock period prevents early withdrawal.
+ *
+ * Security features:
+ * - Reentrancy guard on all state-changing functions
+ * - Checks-Effects-Interactions pattern enforced in withdraw()
+ * - Minimum stake amount to prevent dust attacks
+ * - Strict input validation on all public functions
  */
 contract StakingPlatform {
 
@@ -23,6 +29,25 @@ contract StakingPlatform {
     /// @dev Lock period before withdrawal is allowed (1 hour – suitable for testing)
     uint256 public constant LOCK_PERIOD = 1 hours;
 
+    /// @dev Minimum stake amount to prevent dust attacks (0.001 ETH)
+    uint256 public constant MIN_STAKE = 0.001 ether;
+
+    // ─── Reentrancy Guard ─────────────────────────────────────────────────────
+
+    /// @dev Mutex lock to prevent reentrancy attacks
+    bool private _locked;
+
+    /**
+     * @dev Prevents a function from being called while it is already executing.
+     *      Uses a boolean mutex rather than a counter for gas efficiency.
+     */
+    modifier nonReentrant() {
+        require(!_locked, "StakingPlatform: reentrant call detected");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+
     // ─── Data Structures ─────────────────────────────────────────────────────
 
     struct Stake {
@@ -36,6 +61,12 @@ contract StakingPlatform {
 
     /// @dev All stakes for every user; each address maps to an ordered array
     mapping(address => Stake[]) private userStakes;
+
+    /// @dev Track total ETH currently staked across all users
+    uint256 public totalStaked;
+
+    /// @dev Track total number of stakes ever created
+    uint256 public totalStakesCreated;
 
     // ─── Events ───────────────────────────────────────────────────────────────
 
@@ -57,11 +88,20 @@ contract StakingPlatform {
     // ─── External Functions ───────────────────────────────────────────────────
 
     /**
-     * @notice Stake ETH.  Each call creates a new, independent stake entry.
-     * @dev    msg.value must be > 0.  The contract keeps the ETH until withdrawal.
+     * @notice Stake ETH. Each call creates a new, independent stake entry.
+     * @dev    msg.value must meet minimum stake requirement.
+     *         Uses nonReentrant guard to prevent reentrancy attacks.
+     *         Emits a Staked event on success.
      */
-    function stake() external payable {
-        require(msg.value > 0, "StakingPlatform: must send ETH to stake");
+    function stake() external payable nonReentrant {
+        require(
+            msg.value >= MIN_STAKE,
+            "StakingPlatform: must send ETH to stake"
+        );
+        require(
+            msg.sender != address(0),
+            "StakingPlatform: invalid sender address"
+        );
 
         Stake memory newStake = Stake({
             amount:       msg.value,
@@ -72,17 +112,27 @@ contract StakingPlatform {
 
         userStakes[msg.sender].push(newStake);
 
-        uint256 index    = userStakes[msg.sender].length - 1;
+        uint256 index     = userStakes[msg.sender].length - 1;
         uint256 lockUntil = block.timestamp + LOCK_PERIOD;
+
+        // Update global tracking state
+        totalStaked        += msg.value;
+        totalStakesCreated += 1;
 
         emit Staked(msg.sender, index, msg.value, lockUntil);
     }
 
     /**
      * @notice Withdraw a specific stake after its lock period has expired.
+     * @dev    Follows Checks-Effects-Interactions (CEI) pattern:
+     *         1. CHECKS  – validate all conditions first
+     *         2. EFFECTS – update state before external call
+     *         3. INTERACTIONS – transfer ETH last
+     *         nonReentrant guard provides additional protection.
      * @param  stakeIndex  Index of the stake in the caller's stakes array.
      */
-    function withdraw(uint256 stakeIndex) external {
+    function withdraw(uint256 stakeIndex) external nonReentrant {
+        // ── CHECKS ──────────────────────────────────────────────────────────
         require(
             stakeIndex < userStakes[msg.sender].length,
             "StakingPlatform: invalid stake index"
@@ -90,27 +140,30 @@ contract StakingPlatform {
 
         Stake storage s = userStakes[msg.sender][stakeIndex];
 
-        require(!s.withdrawn, "StakingPlatform: already withdrawn");
+        require(
+            !s.withdrawn,
+            "StakingPlatform: already withdrawn"
+        );
         require(
             block.timestamp >= s.startTime + s.lockDuration,
             "StakingPlatform: lock period has not ended yet"
         );
 
-        // Calculate reward before marking as withdrawn
+        // Calculate reward and total before any state changes
         uint256 reward = _calculateReward(s.amount, s.startTime);
         uint256 total  = s.amount + reward;
 
-        // Mark withdrawn first to prevent re-entrancy
-        s.withdrawn = true;
-
-        // The contract must hold enough ETH to cover rewards.
-        // In production this would be funded separately; here we use the
-        // contract balance (funded by stakers + an initial fund() call).
         require(
             address(this).balance >= total,
-            "StakingPlatform: insufficient contract balance for reward"
+            "StakingPlatform: insufficient contract balance for payout"
         );
 
+        // ── EFFECTS ─────────────────────────────────────────────────────────
+        // Mark withdrawn BEFORE external call (prevents reentrancy)
+        s.withdrawn  = true;
+        totalStaked -= s.amount;
+
+        // ── INTERACTIONS ────────────────────────────────────────────────────
         (bool success, ) = msg.sender.call{ value: total }("");
         require(success, "StakingPlatform: ETH transfer failed");
 
@@ -121,13 +174,17 @@ contract StakingPlatform {
      * @notice Public view to calculate the current reward for a specific stake.
      * @param  user        Wallet address of the staker.
      * @param  stakeIndex  Index of the stake.
-     * @return reward in wei.
+     * @return Reward amount in wei.
      */
     function calculateRewards(address user, uint256 stakeIndex)
         external
         view
         returns (uint256)
     {
+        require(
+            user != address(0),
+            "StakingPlatform: invalid user address"
+        );
         require(
             stakeIndex < userStakes[user].length,
             "StakingPlatform: invalid stake index"
@@ -141,26 +198,51 @@ contract StakingPlatform {
 
     /**
      * @notice Return the full stakes array for a given user.
-     * @param  user  Wallet address.
-     * @return Array of Stake structs (including already-withdrawn ones).
+     * @param  user  Wallet address to query.
+     * @return Array of Stake structs (includes already-withdrawn entries).
      */
     function getUserStakes(address user)
         external
         view
         returns (Stake[] memory)
     {
+        require(
+            user != address(0),
+            "StakingPlatform: invalid user address"
+        );
         return userStakes[user];
     }
 
     /**
      * @notice Returns the total number of stakes a user has ever made.
+     * @param  user  Wallet address to query.
+     * @return Total stake count for the user.
      */
     function getStakeCount(address user) external view returns (uint256) {
         return userStakes[user].length;
     }
 
     /**
-     * @notice Allow the contract owner / deployer to fund the reward pool.
+     * @notice Returns platform-level statistics.
+     * @return _totalStaked         Current ETH locked in active stakes.
+     * @return _totalStakesCreated  All-time number of stakes created.
+     * @return _contractBalance     Current ETH balance of the contract.
+     */
+    function getPlatformStats()
+        external
+        view
+        returns (
+            uint256 _totalStaked,
+            uint256 _totalStakesCreated,
+            uint256 _contractBalance
+        )
+    {
+        return (totalStaked, totalStakesCreated, address(this).balance);
+    }
+
+    /**
+     * @notice Allow the contract to receive ETH to fund the reward pool.
+     * @dev    Called automatically when ETH is sent without calldata.
      */
     receive() external payable {}
 
@@ -170,7 +252,12 @@ contract StakingPlatform {
      * @dev  Pure reward formula:
      *       reward = amount * ANNUAL_RATE * secondsElapsed / (365 days * RATE_PRECISION)
      *
-     *       Example: 1 ETH staked for 1 year at 10% → 0.1 ETH reward.
+     *       Example: 1 ETH staked for 365 days at 10% APR → 0.1 ETH reward.
+     *       Example: 1 ETH staked for 1 hour at 10% APR  → ~0.00001141 ETH reward.
+     *
+     * @param  amount     ETH amount in wei.
+     * @param  startTime  Unix timestamp the stake began.
+     * @return Accrued reward in wei.
      */
     function _calculateReward(uint256 amount, uint256 startTime)
         internal
