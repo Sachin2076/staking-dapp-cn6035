@@ -1,0 +1,19 @@
+{
+  "name": "staking-dapp-hardhat",
+  "version": "1.0.0",
+  "description": "CN6035 – Decentralised ETH Staking Platform with Time-Based Rewards",
+  "private": true,
+  "scripts": {
+    "compile":         "hardhat compile",
+    "test":            "hardhat test",
+    "node":            "hardhat node",
+    "deploy:local":    "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia":  "hardhat run scripts/deploy.js --network sepolia",
+    "clean":           "hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.4",
+    "dotenv": "^16.3.1"
+  }
+}

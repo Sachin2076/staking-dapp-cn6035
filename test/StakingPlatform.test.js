@@ -1,0 +1,138 @@
+/**
+ * StakingPlatform.test.js
+ * ───────────────────────
+ * Basic unit tests for the StakingPlatform smart contract.
+ * Run with:  npx hardhat test
+ */
+
+const { expect }        = require("chai");
+const { ethers }        = require("hardhat");
+const { time }          = require("@nomicfoundation/hardhat-network-helpers");
+
+describe("StakingPlatform", function () {
+  let contract;
+  let owner;
+  let user1;
+  let user2;
+
+  const ONE_HOUR = 3600; // seconds
+
+  beforeEach(async function () {
+    [owner, user1, user2] = await ethers.getSigners();
+
+    const Factory = await ethers.getContractFactory("StakingPlatform");
+    contract = await Factory.deploy();
+    await contract.waitForDeployment();
+
+    // Fund the contract so it can pay rewards
+    await owner.sendTransaction({
+      to: await contract.getAddress(),
+      value: ethers.parseEther("10"),
+    });
+  });
+
+  // ── Staking ────────────────────────────────────────────────────────────────
+
+  describe("stake()", function () {
+    it("should accept ETH and store a new stake", async function () {
+      const amount = ethers.parseEther("1");
+      await expect(contract.connect(user1).stake({ value: amount }))
+        .to.emit(contract, "Staked")
+        .withArgs(user1.address, 0, amount, anyValue);
+
+      const stakes = await contract.getUserStakes(user1.address);
+      expect(stakes.length).to.equal(1);
+      expect(stakes[0].amount).to.equal(amount);
+      expect(stakes[0].withdrawn).to.equal(false);
+    });
+
+    it("should allow multiple independent stakes", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      await contract.connect(user1).stake({ value: ethers.parseEther("2") });
+
+      const stakes = await contract.getUserStakes(user1.address);
+      expect(stakes.length).to.equal(2);
+      expect(stakes[0].amount).to.equal(ethers.parseEther("1"));
+      expect(stakes[1].amount).to.equal(ethers.parseEther("2"));
+    });
+
+    it("should revert when 0 ETH is sent", async function () {
+      await expect(
+        contract.connect(user1).stake({ value: 0 })
+      ).to.be.revertedWith("StakingPlatform: must send ETH to stake");
+    });
+  });
+
+  // ── Rewards ────────────────────────────────────────────────────────────────
+
+  describe("calculateRewards()", function () {
+    it("should return 0 for a brand-new stake", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      const reward = await contract.calculateRewards(user1.address, 0);
+      // Reward will be near-zero (a few seconds at most)
+      expect(reward).to.be.lt(ethers.parseEther("0.0001"));
+    });
+
+    it("should return a positive reward after time passes", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      await time.increase(ONE_HOUR);
+
+      const reward = await contract.calculateRewards(user1.address, 0);
+      expect(reward).to.be.gt(0);
+    });
+  });
+
+  // ── Withdrawal ─────────────────────────────────────────────────────────────
+
+  describe("withdraw()", function () {
+    it("should revert before lock period ends", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      await expect(
+        contract.connect(user1).withdraw(0)
+      ).to.be.revertedWith("StakingPlatform: lock period has not ended yet");
+    });
+
+    it("should pay principal + reward after lock period", async function () {
+      const stakeAmount = ethers.parseEther("1");
+      await contract.connect(user1).stake({ value: stakeAmount });
+
+      // Fast-forward past the 1-hour lock
+      await time.increase(ONE_HOUR + 1);
+
+      const balanceBefore = await ethers.provider.getBalance(user1.address);
+
+      const tx      = await contract.connect(user1).withdraw(0);
+      const receipt = await tx.wait();
+      const gasUsed = receipt.gasUsed * receipt.gasPrice;
+
+      const balanceAfter = await ethers.provider.getBalance(user1.address);
+      // Net received = balanceAfter - balanceBefore + gasUsed
+      const netReceived = balanceAfter - balanceBefore + gasUsed;
+
+      // Should receive more than the original stake (reward added)
+      expect(netReceived).to.be.gt(stakeAmount);
+    });
+
+    it("should mark stake as withdrawn", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      await time.increase(ONE_HOUR + 1);
+      await contract.connect(user1).withdraw(0);
+
+      const stakes = await contract.getUserStakes(user1.address);
+      expect(stakes[0].withdrawn).to.equal(true);
+    });
+
+    it("should revert on double withdrawal", async function () {
+      await contract.connect(user1).stake({ value: ethers.parseEther("1") });
+      await time.increase(ONE_HOUR + 1);
+      await contract.connect(user1).withdraw(0);
+
+      await expect(
+        contract.connect(user1).withdraw(0)
+      ).to.be.revertedWith("StakingPlatform: already withdrawn");
+    });
+  });
+});
+
+// Helper matcher for any value (used in event args)
+const anyValue = require("@nomicfoundation/hardhat-chai-matchers/withArgs").anyValue;
