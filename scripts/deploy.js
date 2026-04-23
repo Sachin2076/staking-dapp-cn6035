@@ -40,7 +40,7 @@ async function main() {
   //    In production you would fund this separately; here we seed 0.5 ETH.
   const fundTx = await deployer.sendTransaction({
     to: contractAddress,
-    value: ethers.parseEther("0.5"),
+    value: ethers.parseEther("0.01"),
   });
   await fundTx.wait();
   console.log(`Reward pool funded   : 0.5 ETH`);
