@@ -3,27 +3,21 @@ pragma solidity ^0.8.19;
 
 /**
  * @title StakingPlatform
- * @dev CN6035 - Decentralized ETH Staking Platform with Time-Based Rewards
- * @author Student Project - University of East London
- *
- * IMPROVEMENTS:
- * - Emergency pause mechanism for production safety
- * - Clearer error messages with actual values
- * - Owner-only administrative functions
+ * @dev CN6035 Staking DApp for ETH with time-based rewards
  */
 contract StakingPlatform {
 
-    // ─── Constants ────────────────────────────────────────────────────────────
+    // Constants
     uint256 public constant ANNUAL_RATE = 10;
     uint256 public constant RATE_PRECISION = 100;
     uint256 public constant LOCK_PERIOD = 1 hours;
     uint256 public constant MIN_STAKE = 0.001 ether;
 
-    // ─── State Variables ──────────────────────────────────────────────────────
+    // State Variables
     address public immutable owner;
     bool public paused;
 
-    // ─── Reentrancy Guard ─────────────────────────────────────────────────────
+    // Reentrancy Guard
     bool private _locked;
 
     modifier nonReentrant() {
@@ -33,7 +27,7 @@ contract StakingPlatform {
         _locked = false;
     }
 
-    // ─── Access Control ───────────────────────────────────────────────────────
+    // Access Control
     modifier onlyOwner() {
         require(msg.sender == owner, "StakingPlatform: caller is not the owner");
         _;
@@ -44,31 +38,31 @@ contract StakingPlatform {
         _;
     }
 
-    // ─── Data Structures ─────────────────────────────────────────────────────
+    // Data Structures
     struct Stake {
         uint256 amount;
         uint256 startTime;
         uint256 lockDuration;
-        bool    withdrawn;
+        bool withdrawn;
     }
 
     mapping(address => Stake[]) private userStakes;
     uint256 public totalStaked;
     uint256 public totalStakesCreated;
 
-    // ─── Events ───────────────────────────────────────────────────────────────
+    // Events
     event Staked(address indexed user, uint256 indexed stakeIndex, uint256 amount, uint256 lockUntil);
     event Withdrawn(address indexed user, uint256 indexed stakeIndex, uint256 principal, uint256 reward, uint256 total);
     event Paused(address indexed by);
     event Unpaused(address indexed by);
 
-    // ─── Constructor ──────────────────────────────────────────────────────────
+    // Constructor
     constructor() {
         owner = msg.sender;
         paused = false;
     }
 
-    // ─── Emergency Functions ──────────────────────────────────────────────────
+    // Emergency Functions
     
     function pause() external onlyOwner {
         require(!paused, "StakingPlatform: already paused");
@@ -82,7 +76,7 @@ contract StakingPlatform {
         emit Unpaused(msg.sender);
     }
 
-    // ─── External Functions ───────────────────────────────────────────────────
+    // External Functions
 
     function stake() external payable nonReentrant whenNotPaused {
         require(
@@ -91,18 +85,18 @@ contract StakingPlatform {
         );
 
         Stake memory newStake = Stake({
-            amount:       msg.value,
-            startTime:    block.timestamp,
+            amount: msg.value,
+            startTime: block.timestamp,
             lockDuration: LOCK_PERIOD,
-            withdrawn:    false
+            withdrawn: false
         });
 
         userStakes[msg.sender].push(newStake);
 
-        uint256 index     = userStakes[msg.sender].length - 1;
+        uint256 index = userStakes[msg.sender].length - 1;
         uint256 lockUntil = block.timestamp + LOCK_PERIOD;
 
-        totalStaked        += msg.value;
+        totalStaked += msg.value;
         totalStakesCreated += 1;
 
         emit Staked(msg.sender, index, msg.value, lockUntil);
@@ -123,17 +117,17 @@ contract StakingPlatform {
         );
 
         uint256 reward = _calculateReward(s.amount, s.startTime);
-        uint256 total  = s.amount + reward;
+        uint256 total = s.amount + reward;
 
         require(
             address(this).balance >= total,
             "StakingPlatform: insufficient contract balance for payout"
         );
 
-        s.withdrawn  = true;
+        s.withdrawn = true;
         totalStaked -= s.amount;
 
-        (bool success, ) = msg.sender.call{ value: total }("");
+        (bool success, ) = msg.sender.call{value: total}("");
         require(success, "StakingPlatform: ETH transfer failed");
 
         emit Withdrawn(msg.sender, stakeIndex, s.amount, reward, total);
@@ -172,7 +166,7 @@ contract StakingPlatform {
 
     receive() external payable {}
 
-    // ─── Internal Helpers ─────────────────────────────────────────────────────
+    // Internal Helpers
 
     function _calculateReward(uint256 amount, uint256 startTime)
         internal view returns (uint256)

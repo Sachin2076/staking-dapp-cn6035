@@ -1,15 +1,13 @@
 /**
  * blockchain.js
- * ─────────────
  * All ethers.js / smart-contract interaction logic lives here.
  * Components call these service functions instead of touching ethers directly.
- * This separation makes the codebase easier to test and maintain.
  */
 
 import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "../contractConfig";
 
-// ─── Provider / Signer Helpers ────────────────────────────────────────────────
+// Provider / Signer Helpers
 
 /** Create a read-only BrowserProvider backed by MetaMask */
 export const getProvider = () =>
@@ -25,7 +23,7 @@ export const getSignedContract = async () => {
 export const getReadContract = () =>
   new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, getProvider());
 
-// ─── Data Fetching ────────────────────────────────────────────────────────────
+// Data Fetching
 
 /**
  * Fetch all stakes and the contract balance for a given wallet address.
@@ -41,17 +39,17 @@ export const fetchChainData = async (address) => {
 
   return {
     stakes: raw.map((s, i) => ({
-      index:        i,
-      amount:       s.amount,
-      startTime:    s.startTime,
+      index: i,
+      amount: s.amount,
+      startTime: s.startTime,
       lockDuration: s.lockDuration,
-      withdrawn:    s.withdrawn,
+      withdrawn: s.withdrawn,
     })),
     contractBalance: bal,
   };
 };
 
-// ─── Transactions ─────────────────────────────────────────────────────────────
+// Transactions
 
 /**
  * Submit a stake transaction.
@@ -77,7 +75,7 @@ export const withdrawStake = async (stakeIndex) => {
   return tx.wait();
 };
 
-// ─── Wallet ───────────────────────────────────────────────────────────────────
+// Wallet
 
 /**
  * Request MetaMask wallet connection.
