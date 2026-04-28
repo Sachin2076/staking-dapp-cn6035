@@ -1,6 +1,6 @@
 /**
  * deploy.js
- * ─────────
+ *
  * Deploys StakingPlatform.sol and writes the deployed address + ABI into
  * client/src/contractConfig.js so the React frontend picks it up automatically.
  *
@@ -28,7 +28,7 @@ async function main() {
   );
   console.log("-".repeat(60));
 
-  // ── 1. Deploy the contract ────────────────────────────────────────────────
+  // 1. Deploy the contract 
   const StakingPlatform = await ethers.getContractFactory("StakingPlatform");
   const contract = await StakingPlatform.deploy();
   await contract.waitForDeployment();
@@ -36,7 +36,7 @@ async function main() {
   const contractAddress = await contract.getAddress();
   console.log(`Contract deployed at : ${contractAddress}`);
 
-  // ── 2. Fund the contract with some ETH to cover reward pay-outs ──────────
+  // 2. Fund the contract with some ETH to cover reward pay-outs 
   //    In production you would fund this separately; here we seed 0.5 ETH.
   const fundTx = await deployer.sendTransaction({
     to: contractAddress,
@@ -45,7 +45,7 @@ async function main() {
   await fundTx.wait();
   console.log(`Reward pool funded   : 0.01 ETH`);
 
-  // ── 3. Write contractConfig.js for the React frontend ────────────────────
+  //  3. Write contractConfig.js for the React frontend 
   const artifactPath = path.join(
     __dirname,
     "..",

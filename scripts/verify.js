@@ -1,6 +1,6 @@
 /**
  * verify.js
- * ─────────
+ *
  * Verifies the deployed StakingPlatform contract on Sepolia Etherscan
  * 
  * Prerequisites:

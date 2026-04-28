@@ -1,6 +1,5 @@
 /**
  * Dashboard.js
- * ────────────
  * Main staking dashboard page.
  * Composes Navbar, NotificationBanner, StakeForm, StakesTable, and Sidebar.
  * All blockchain calls are delegated to the blockchain service.
@@ -33,13 +32,13 @@ const [loadingMessage, setLoadingMessage] = useState("");
     "Don't invest unless you're prepared to lose all the money you invest. This is a high-risk platform."
   );
 
-  // ── Fetch price data on mount ────────────────────────────────────────────────
+  //  Fetch price data on mount 
   useEffect(() => {
     fetchETHPrice().then(setEthPrice);
     fetchPriceHistory().then(setPriceHistory);
   }, []);
 
-  // ── Fetch chain data when account changes ────────────────────────────────────
+  // Fetch chain data when account changes 
   const loadData = useCallback(async () => {
   if (!account) return;
   try {
@@ -56,7 +55,7 @@ const [loadingMessage, setLoadingMessage] = useState("");
   }
 }, [account]);
 
-  // ── Live reward ticker ───────────────────────────────────────────────────────
+  // Live reward ticker
   useEffect(() => {
     const timer = setInterval(() => {
       const updated = {};
@@ -70,7 +69,7 @@ const [loadingMessage, setLoadingMessage] = useState("");
     return () => clearInterval(timer);
   }, [stakes]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  // Handlers
   const handleStake = async (amountEth) => {
   try {
     setLoading(true);
@@ -112,7 +111,7 @@ const [loadingMessage, setLoadingMessage] = useState("");
   }
 };
 
-  // ── Derived state ─────────────────────────────────────────────────────────────
+  // Derived state
   const activeStakes  = stakes.filter((s) => !s.withdrawn);
   const totalStaked   = activeStakes.reduce((sum, s) => sum + BigInt(s.amount), 0n);
   const totalRewards  = Object.values(liveRewards).reduce((sum, r) => sum + r, 0n);

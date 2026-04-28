@@ -1,6 +1,6 @@
 /**
  * ConnectWalletPage.js
- * ────────────────────
+ 
  * Shown after successful login, before wallet is connected.
  * Prompts the user to connect MetaMask.
  */

@@ -1,6 +1,6 @@
 /**
  * api.js
- * ──────
+
  * External API calls (CoinGecko price data).
  * Isolated here so they can be mocked in tests or swapped for another provider.
  */

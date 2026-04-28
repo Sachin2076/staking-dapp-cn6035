@@ -1,6 +1,5 @@
 /**
  * CalculatorPage.js
- * ─────────────────
  * Interactive staking reward calculator.
  * Pulls live ETH price to show estimated USD value.
  */
