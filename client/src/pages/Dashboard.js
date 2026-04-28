@@ -16,8 +16,12 @@ import Footer                 from "../components/Footer";
 import { fetchChainData, stakeETH, withdrawStake } from "../services/blockchain";
 import { fetchETHPrice, fetchPriceHistory }        from "../services/api";
 import { calcReward, toEth, toEth4, ANNUAL_RATE }  from "../utils/helpers";
+import LoadingSpinner from "../components/LoadingSpinner";
+
 
 export default function Dashboard({ account, username, onLogout, setPage, onConnectWallet }) {
+  const [loading, setLoading] = useState(false);
+const [loadingMessage, setLoadingMessage] = useState("");
   const [stakes,          setStakes]          = useState([]);
   const [contractBalance, setContractBalance] = useState(0n);
   const [status,          setStatus]          = useState("");
@@ -25,6 +29,7 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
   const [ethPrice,        setEthPrice]        = useState(0);
   const [priceHistory,    setPriceHistory]    = useState([]);
   const [notification,    setNotification]    = useState(
+  
     "Don't invest unless you're prepared to lose all the money you invest. This is a high-risk platform."
   );
 
@@ -36,17 +41,20 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
 
   // ── Fetch chain data when account changes ────────────────────────────────────
   const loadData = useCallback(async () => {
-    if (!account) return;
-    try {
-      const data = await fetchChainData(account);
-      setStakes(data.stakes);
-      setContractBalance(data.contractBalance);
-    } catch (err) {
-      console.error("Failed to load chain data:", err);
-    }
-  }, [account]);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  if (!account) return;
+  try {
+    setLoading(true);
+    setLoadingMessage("Fetching your stakes...");
+    
+    const data = await fetchChainData(account);
+    setStakes(data.stakes);
+    setContractBalance(data.contractBalance);
+  } catch (err) {
+    console.error("Failed to load chain data:", err);
+  } finally {
+    setLoading(false);
+  }
+}, [account]);
 
   // ── Live reward ticker ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -64,38 +72,56 @@ export default function Dashboard({ account, username, onLogout, setPage, onConn
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleStake = async (amountEth) => {
-    try {
-      setStatus("Processing transaction…");
-      await stakeETH(amountEth);
-      setStatus("✅ Staked successfully!");
-      loadData();
-    } catch (err) {
-      console.error("Stake error:", err);
-      setStatus("❌ Transaction failed — check MetaMask and try again.");
-    }
-  };
-
+  try {
+    setLoading(true);
+    setLoadingMessage("Preparing transaction...");
+    setStatus("Processing transaction…");
+    
+    await stakeETH(amountEth);
+    
+    setLoadingMessage("Confirming on blockchain...");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    setStatus("✅ Staked successfully!");
+    loadData();
+  } catch (err) {
+    console.error("Stake error:", err);
+    setStatus("❌ Transaction failed — check MetaMask and try again.");
+  } finally {
+    setLoading(false);
+  }
+};
   const handleWithdraw = async (index) => {
-    try {
-      setStatus(`Withdrawing stake #${index + 1}…`);
-      await withdrawStake(index);
-      setStatus("✅ Withdrawal successful!");
-      loadData();
-    } catch (err) {
-      console.error("Withdraw error:", err);
-      setStatus("❌ Withdrawal failed — lock period may not have ended.");
-    }
-  };
+  try {
+    setLoading(true);
+    setLoadingMessage(`Withdrawing stake #${index + 1}...`);
+    setStatus(`Withdrawing stake #${index + 1}…`);
+    
+    await withdrawStake(index);
+    
+    setLoadingMessage("Confirming withdrawal...");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    setStatus("✅ Withdrawal successful!");
+    loadData();
+  } catch (err) {
+    console.error("Withdraw error:", err);
+    setStatus("❌ Withdrawal failed — lock period may not have ended.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ── Derived state ─────────────────────────────────────────────────────────────
   const activeStakes  = stakes.filter((s) => !s.withdrawn);
   const totalStaked   = activeStakes.reduce((sum, s) => sum + BigInt(s.amount), 0n);
   const totalRewards  = Object.values(liveRewards).reduce((sum, r) => sum + r, 0n);
 
-  return (
-    <div style={{ background: "#f7f9fc", minHeight: "100vh" }}>
+ return (
+  <div style={{ background: "#f7f9fc", minHeight: "100vh" }}>
+    {loading && <LoadingSpinner message={loadingMessage} />}
 
-      <Navbar setPage={setPage} username={username} onLogout={onLogout} account={account} onConnectWallet={onConnectWallet} />
+    <Navbar setPage={setPage} username={username} onLogout={onLogout} account={account} onConnectWallet={onConnectWallet} />
 
       <NotificationBanner
         message={notification}

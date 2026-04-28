@@ -5,10 +5,11 @@
  * Run with:  npx hardhat test
  */
 
-const { expect }        = require("chai");
-const { ethers }        = require("hardhat");
-const { time }          = require("@nomicfoundation/hardhat-network-helpers");
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
+
 describe("StakingPlatform", function () {
   let contract;
   let owner;
@@ -59,7 +60,7 @@ describe("StakingPlatform", function () {
     it("should revert when 0 ETH is sent", async function () {
       await expect(
         contract.connect(user1).stake({ value: 0 })
-      ).to.be.revertedWith("StakingPlatform: must send ETH to stake");
+      ).to.be.revertedWith("StakingPlatform: minimum stake is 0.001 ETH");
     });
   });
 
@@ -69,7 +70,6 @@ describe("StakingPlatform", function () {
     it("should return 0 for a brand-new stake", async function () {
       await contract.connect(user1).stake({ value: ethers.parseEther("1") });
       const reward = await contract.calculateRewards(user1.address, 0);
-      // Reward will be near-zero (a few seconds at most)
       expect(reward).to.be.lt(ethers.parseEther("0.0001"));
     });
 
@@ -96,20 +96,17 @@ describe("StakingPlatform", function () {
       const stakeAmount = ethers.parseEther("1");
       await contract.connect(user1).stake({ value: stakeAmount });
 
-      // Fast-forward past the 1-hour lock
       await time.increase(ONE_HOUR + 1);
 
       const balanceBefore = await ethers.provider.getBalance(user1.address);
 
-      const tx      = await contract.connect(user1).withdraw(0);
+      const tx = await contract.connect(user1).withdraw(0);
       const receipt = await tx.wait();
       const gasUsed = receipt.gasUsed * receipt.gasPrice;
 
       const balanceAfter = await ethers.provider.getBalance(user1.address);
-      // Net received = balanceAfter - balanceBefore + gasUsed
       const netReceived = balanceAfter - balanceBefore + gasUsed;
 
-      // Should receive more than the original stake (reward added)
       expect(netReceived).to.be.gt(stakeAmount);
     });
 
@@ -132,6 +129,7 @@ describe("StakingPlatform", function () {
       ).to.be.revertedWith("StakingPlatform: already withdrawn");
     });
   });
+
   // ── Platform Stats ────────────────────────────────────────────────────────
 
   describe("getPlatformStats()", function () {
@@ -161,6 +159,34 @@ describe("StakingPlatform", function () {
       expect(user2Stakes[0].amount).to.equal(ethers.parseEther("2"));
     });
   });
-});
 
-// Helper matcher for any value (used in event args)
+  // ── Emergency Functions ──────────────────────────────────────────────────
+
+  describe("Emergency Functions", function () {
+    it("should allow owner to pause", async function () {
+      await contract.pause();
+      const paused = await contract.paused();
+      expect(paused).to.equal(true);
+    });
+
+    it("should prevent staking when paused", async function () {
+      await contract.pause();
+      await expect(
+        contract.connect(user1).stake({ value: ethers.parseEther("1") })
+      ).to.be.revertedWith("StakingPlatform: contract is paused");
+    });
+
+    it("should allow owner to unpause", async function () {
+      await contract.pause();
+      await contract.unpause();
+      const paused = await contract.paused();
+      expect(paused).to.equal(false);
+    });
+
+    it("should prevent non-owner from pausing", async function () {
+      await expect(
+        contract.connect(user1).pause()
+      ).to.be.revertedWith("StakingPlatform: caller is not the owner");
+    });
+  });
+});
